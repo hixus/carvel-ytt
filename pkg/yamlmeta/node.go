@@ -6,6 +6,7 @@ package yamlmeta
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/k14s/ytt/pkg/orderedmap"
 
 	"github.com/k14s/ytt/pkg/filepos"
 	"github.com/k14s/ytt/pkg/yamlmeta/internal/yaml.v2"
@@ -57,8 +58,8 @@ func (m *Map) SetValue(val interface{}) error {
 }
 
 func (mi *MapItem) SetValue(val interface{}) error {
-	if isMapOrArrayItem(val) {
-		return fmt.Errorf("cannot set map-or-array-item value (%T) into mapitem", val)
+	if !(val == nil || isMapOrArrayOrScalar(val)) {
+		return fmt.Errorf("maps can contain only arrays, maps, or scalars; this is a %T", val)
 	}
 	mi.Value = val
 	return nil
@@ -69,11 +70,24 @@ func (a *Array) SetValue(val interface{}) error {
 }
 
 func (ai *ArrayItem) SetValue(val interface{}) error {
-	if isMapOrArrayItem(val) {
-		return fmt.Errorf("cannot set map-or-array-item value (%T) into arrayitem", val)
+	if !(val == nil || isMapOrArrayOrScalar(val)) {
+		return fmt.Errorf("arrays can contain only maps, arrays, or scalars; this is a %T", val)
 	}
 	ai.Value = val
 	return nil
+}
+
+func isMapOrArrayOrScalar(val interface{}) bool {
+	switch val.(type) {
+	case *Map, *orderedmap.Map:
+		return true
+	case *Array, []interface{}:
+		return true
+	case int, int8, int16, int32, int64, bool, string, float32, float64:
+		return true
+	default:
+		return false
+	}
 }
 
 func (ds *DocumentSet) ResetValue() { ds.Items = nil }

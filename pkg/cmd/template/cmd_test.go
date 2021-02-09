@@ -826,3 +826,59 @@ func TestLoadYTTModuleFailEarly(t *testing.T) {
 		t.Fatalf("Expected RunWithFiles to fail with error, but was '%s'", out.Err.Error())
 	}
 }
+
+func TestBuildingInvalidYAMLFailsFast(t *testing.T) {
+	t.Run("setting map item to DocumentSet", func(t *testing.T) {
+		tpl := []byte(`
+#@ def/end docset():
+---
+foo: true
+
+---
+bar: #@ docset()
+`)
+
+		filesToProcess := files.NewSortedFiles([]*files.File{
+			files.MustNewFileFromSource(files.NewBytesSource("template.yml", tpl)),
+		})
+
+		ui := ui.NewTTY(false)
+		opts := cmdtpl.NewOptions()
+
+		out := opts.RunWithFiles(cmdtpl.Input{Files: filesToProcess}, ui)
+		if out.Err == nil {
+			t.Fatalf("Expected RunWithFiles to fail")
+		}
+
+		if !strings.Contains(out.Err.Error(), "maps can contain only arrays, maps, or scalars") {
+			t.Fatalf("Expected RunWithFiles to fail with error, but was '%s'", out.Err.Error())
+		}
+	})
+	t.Run("setting array item to DocumentSet", func(t *testing.T) {
+		tpl := []byte(`
+#@ def/end docset():
+---
+foo: true
+
+---
+bar:
+- #@ docset()
+`)
+
+		filesToProcess := files.NewSortedFiles([]*files.File{
+			files.MustNewFileFromSource(files.NewBytesSource("template.yml", tpl)),
+		})
+
+		ui := ui.NewTTY(false)
+		opts := cmdtpl.NewOptions()
+
+		out := opts.RunWithFiles(cmdtpl.Input{Files: filesToProcess}, ui)
+		if out.Err == nil {
+			t.Fatalf("Expected RunWithFiles to fail")
+		}
+
+		if !strings.Contains(out.Err.Error(), "arrays can contain only maps, arrays, or scalars") {
+			t.Fatalf("Expected RunWithFiles to fail with error, but was '%s'", out.Err.Error())
+		}
+	})
+}
